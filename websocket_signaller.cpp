@@ -41,6 +41,13 @@ namespace detail {
 		{
 			assert(callbck_);
 		}
+		
+		~session() {
+#ifdef _DEBUG
+			//assert(false);//just to know if it is called.
+			std::cout << "~session destructor called\n";
+#endif//_DEBUG
+		}
 
 		// Start the asynchronous operation
 		void

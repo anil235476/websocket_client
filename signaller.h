@@ -7,6 +7,7 @@ namespace grt {
 
 	class signaller_callback {
 	public:
+		virtual ~signaller_callback() {}
 		virtual void on_message(std::string msg){}
 		virtual void on_connect(){}
 		virtual void on_error(std::string error){}
