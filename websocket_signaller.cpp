@@ -3,6 +3,8 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <boost/beast/websocket/ssl.hpp>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -11,6 +13,7 @@
 #include <thread>
 
 using tcp = boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
+namespace ssl = boost::asio::ssl;               // from <boost/asio/ssl.hpp>
 namespace websocket = boost::beast::websocket;  // from <boost/beast/websocket.hpp>
 
 namespace detail {
@@ -26,7 +29,12 @@ namespace detail {
 	// Sends a WebSocket message and prints the response
 	class session{
 		tcp::resolver resolver_;
+#ifdef SECURE_SIGNALING
+		websocket::stream<ssl::stream<tcp::socket>> ws_;
+#else
 		websocket::stream<tcp::socket> ws_;
+#endif//SECURE_SIGNALING
+		
 	    boost::beast::multi_buffer buffer_;
 		std::string host_;
 		std::string text_{ "/" };
@@ -34,9 +42,13 @@ namespace detail {
 	public:
 		// Resolver and socket require an io_context
 		explicit
-			session(boost::asio::io_context& ioc, std::shared_ptr<grt::signaller_callback> callbk)
+			session(boost::asio::io_context& ioc, ssl::context& ctx, std::shared_ptr<grt::signaller_callback> callbk)
 			: resolver_(ioc)
+#ifdef SECURE_SIGNALING
+			, ws_(ioc, ctx)
+#else
 			, ws_(ioc)
+#endif
 			, callbck_{ callbk }
 		{
 			assert(callbck_);
@@ -80,7 +92,11 @@ namespace detail {
 
 			// Make the connection on the IP address we get from a lookup
 			boost::asio::async_connect(
+#ifdef SECURE_SIGNALING
+				ws_.next_layer().next_layer(),
+#else
 				ws_.next_layer(),
+#endif//SECURE_SIGNALING
 				results.begin(),
 				results.end(),
 				std::bind(
@@ -95,6 +111,28 @@ namespace detail {
 		{
 			if (ec)
 				return fail(ec, "connect");
+#ifdef SECURE_SIGNALING
+			ws_.next_layer().async_handshake(ssl::stream_base::client,
+				std::bind(
+					&session::on_ssl_handshake,
+					this,
+					std::placeholders::_1));
+#else
+			// Perform the websocket handshake
+			ws_.async_handshake(host_, text_,
+				std::bind(
+					&session::on_handshake,
+					this,
+					std::placeholders::_1));
+#endif//SECURE_SIGNALING
+		}
+
+#ifdef SECURE_SIGNALING
+		void
+			on_ssl_handshake(boost::system::error_code ec)
+		{
+			if (ec)
+				return fail(ec, "ssl_handshake");
 
 			// Perform the websocket handshake
 			ws_.async_handshake(host_, text_,
@@ -103,7 +141,7 @@ namespace detail {
 					this,
 					std::placeholders::_1));
 		}
-
+#endif//SECURE_SIGNALING
 		void send_message(std::string msg_) {
 			const auto r = ws_.write(boost::asio::buffer(msg_));
 			assert(r == msg_.size());
@@ -151,6 +189,7 @@ namespace detail {
 		}
 
 		void close() {
+			//ws_.async_close()
 			// Close the WebSocket connection
 			ws_.async_close(websocket::close_code::normal,
 				std::bind(
@@ -182,22 +221,17 @@ namespace grt {
 	void websocket_signaller::connect(std::string host,
 		std::string port, std::shared_ptr<signaller_callback> clb) {
 		connect(host, port, std::string{"/"}, clb);
-		/*t_ = std::thread{ [this, host, port, clb]() {
-			boost::asio::io_context ioc;
-			session_ = std::make_shared<detail::session>(
-				ioc, clb);
-			session_->run(host, port);
-			ioc.run();
-			}
-		};*/
 	}
 
 	void websocket_signaller::connect(std::string host, std::string port,
 		std::string text, std::shared_ptr<signaller_callback> clb) {
 		t_ = std::thread{ [this, host, port, text, clb]() {
 			boost::asio::io_context ioc;
+			// The SSL context is required, and holds certificates
+			ssl::context ctx{ ssl::context::sslv23_client };
+
 			session_ = std::make_shared<detail::session>(
-				ioc, clb);
+				ioc, ctx, clb);
 			session_->run(host, port, text);
 			ioc.run();
 			}
