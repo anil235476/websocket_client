@@ -366,7 +366,7 @@ namespace grt {
 			// The SSL context is required, and holds certificates
 			ssl::context ctx{ ssl::context::sslv23_client };
 
-			session_ = std::make_shared<detail::session>(
+			session_ = std::make_shared<session_imp>(
 				ioc, ctx, clb);
 			session_->run(host, port, text);
 			ioc.run();

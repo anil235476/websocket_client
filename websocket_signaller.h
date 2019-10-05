@@ -9,6 +9,12 @@ namespace detail {
 	class session_unsecure;
 }
 
+#ifdef SECURE_SIGNALING
+using session_imp = detail::session;
+#else
+using session_imp = detail::session_unsecure;
+#endif//SECURE_SIGNALING
+
 namespace grt {
 
 	class websocket_signaller : public signaller {
@@ -21,11 +27,7 @@ namespace grt {
 		void send(std::string msg) override;
 
 	private:
-#ifdef SECURE_SIGNALING
-		std::shared_ptr<detail::session> session_;
-#else
-		std::shared_ptr<detail::session_unsecure> session_;
-#endif
+		std::shared_ptr<session_imp> session_;
 		std::thread t_;
 	};
 
