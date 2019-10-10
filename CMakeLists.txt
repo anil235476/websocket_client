@@ -32,6 +32,6 @@ target_include_directories(signaller PUBLIC
 
 
 target_link_directories( signaller PUBLIC
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/openssl-1.1.0f-vs2017/lib64>
+	#	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/openssl-1.1.0f-vs2017/lib64>
 	#$<BUILD_INTERFACE:${CMAKE_HOME_DIRECTORY}/webrtc_open_source/debug>
 )
