@@ -21,9 +21,11 @@ namespace detail {
 
 	// Report a failure
 	void
-		fail(boost::system::error_code ec, char const* what)
+		fail(boost::system::error_code ec, char const* what, std::shared_ptr<grt::signaller_callback> callbck)
 	{
 		std::cerr << what << ": " << ec.message() << "\n";
+		assert(callbck.get());
+		callbck->on_error(what);
 	}
 
 	// Sends a WebSocket message and prints the response
@@ -78,8 +80,10 @@ namespace detail {
 				boost::system::error_code ec,
 				tcp::resolver::results_type results)
 		{
-			if (ec)
-				return fail(ec, "resolve");
+			if (ec) {
+				return fail(ec, "resolve", callbck_);
+			}
+				
 
 			// Make the connection on the IP address we get from a lookup
 			boost::asio::async_connect(
@@ -97,7 +101,7 @@ namespace detail {
 			on_connect(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "connect");
+				return fail(ec, "connect", callbck_);
 			ws_.next_layer().async_handshake(ssl::stream_base::client,
 				std::bind(
 					&session::on_ssl_handshake,
@@ -108,8 +112,10 @@ namespace detail {
 		void
 			on_ssl_handshake(boost::system::error_code ec)
 		{
-			if (ec)
-				return fail(ec, "ssl_handshake");
+			if (ec) {
+				return fail(ec, "ssl_handshake", callbck_);
+			}
+				
 
 			// Perform the websocket handshake
 			ws_.async_handshake(host_, text_,
@@ -128,7 +134,7 @@ namespace detail {
 			on_handshake(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "handshake");
+				return fail(ec, "handshake", callbck_);
 			
 			start_reading();
 			callbck_->on_connect();
@@ -158,8 +164,11 @@ namespace detail {
 
 			boost::ignore_unused(bytes_transferred);
 
-			if (ec)
-				return fail(ec, "read");
+			if (ec) {
+				assert(false);
+				return fail(ec, "read", callbck_);
+			}
+				
 			callbck_->on_message(boost::beast::buffers_to_string(buffer_.data()));
 			buffer_.consume(buffer_.size());
 			start_reading();
@@ -180,7 +189,7 @@ namespace detail {
 			on_close(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "close");
+				return fail(ec, "close", callbck_);
 			callbck_->on_close();
 
 			// std::cout << boost::beast::buffers(buffer_.data()) << std::endl;
@@ -246,7 +255,7 @@ namespace detail {
 				tcp::resolver::results_type results)
 		{
 			if (ec)
-				return fail(ec, "resolve");
+				return fail(ec, "resolve", callbck_);
 
 			// Make the connection on the IP address we get from a lookup
 			boost::asio::async_connect(
@@ -265,7 +274,7 @@ namespace detail {
 			on_connect(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "connect");
+				return fail(ec, "connect", callbck_);
 			// Perform the websocket handshake
 			ws_.async_handshake(host_, text_,
 				std::bind(
@@ -284,7 +293,7 @@ namespace detail {
 			on_handshake(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "handshake");
+				return fail(ec, "handshake", callbck_);
 
 			start_reading();
 			callbck_->on_connect();
@@ -315,7 +324,7 @@ namespace detail {
 			boost::ignore_unused(bytes_transferred);
 
 			if (ec)
-				return fail(ec, "read");
+				return fail(ec, "read", callbck_);
 			callbck_->on_message(boost::beast::buffers_to_string(buffer_.data()));
 			buffer_.consume(buffer_.size());
 			start_reading();
@@ -324,11 +333,12 @@ namespace detail {
 		void close() {
 			//ws_.async_close()
 			// Close the WebSocket connection
-			ws_.async_close(websocket::close_code::normal,
-				std::bind(
-					&session_unsecure::on_close,
-					this,
-					std::placeholders::_1));
+			if(ws_.is_open())
+				ws_.async_close(websocket::close_code::normal,
+					std::bind(
+						&session_unsecure::on_close,
+						this,
+						std::placeholders::_1));
 
 		}
 
@@ -336,7 +346,7 @@ namespace detail {
 			on_close(boost::system::error_code ec)
 		{
 			if (ec)
-				return fail(ec, "close");
+				return fail(ec, "close", callbck_);
 			callbck_->on_close();
 
 			// std::cout << boost::beast::buffers(buffer_.data()) << std::endl;
@@ -387,7 +397,13 @@ namespace grt {
 	}
 
 	void websocket_signaller::send(std::string msg) {
-		session_->send_message(msg);
+		try {
+			session_->send_message(msg);
+		}
+		catch (boost::exception const& ex) {
+			//boost::error_info(ex);
+			//todo: handle this.
+		}
 	}
 
 

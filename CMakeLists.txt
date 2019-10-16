@@ -8,6 +8,8 @@ if(SECURE_SIGNALING)
 add_definitions(-DSECURE_SIGNALING)
 endif(SECURE_SIGNALING)
 
+add_definitions(/ZI)
+
 add_library(signaller
 	signaller.h
 	signaller.cpp
