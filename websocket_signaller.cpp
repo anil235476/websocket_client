@@ -223,8 +223,7 @@ namespace detail {
 
 		~session_unsecure() {
 #ifdef _DEBUG
-			//assert(false);//just to know if it is called.
-			std::cout << "~session_unsecure destructor called\n";
+			std::cout << "~session_unsecure destructor called, host ="<<host_<<'\n';
 #endif//_DEBUG
 		}
 
@@ -380,25 +379,31 @@ namespace grt {
 				ioc, ctx, clb);
 			session_->run(host, port, text);
 			ioc.run();
+			std::cout << "\n coming out of session run \n";
+			session_.reset();
 			}
 		};
 	}
 
 	void websocket_signaller::set_callback(std::shared_ptr<signaller_callback> clb) {
-		session_->set_callback(clb);
+		if(session_)
+			session_->set_callback(clb);
 	}
 
 	void websocket_signaller::disconnect() {
-		session_->close();
+		if(session_)
+			session_->close();
 	}
 
 	websocket_signaller::~websocket_signaller() {
+		std::cout << "\n~websocket_signaller() called\n";
 		t_.join();
 	}
 
 	void websocket_signaller::send(std::string msg) {
 		try {
-			session_->send_message(msg);
+			if(session_)
+				session_->send_message(msg);
 		}
 		catch (boost::exception const& ex) {
 			//boost::error_info(ex);
@@ -423,16 +428,20 @@ namespace grt {
 				ioc, ctx, clb);
 			session_->run(host, port, text);
 			ioc.run();
+			std::cout << "\n coming out of session run websocket_signaller_unsecure \n";
+			session_.reset();
 			}
 		};
 	}
 
 	void websocket_signaller_unsecure::set_callback(std::shared_ptr<signaller_callback> clb) {
-		session_->set_callback(clb);
+		if(session_)
+			session_->set_callback(clb);
 	}
 
 	void websocket_signaller_unsecure::disconnect() {
-		session_->close();
+		if(session_)
+			session_->close();
 	}
 
 	websocket_signaller_unsecure::~websocket_signaller_unsecure() {
@@ -440,7 +449,8 @@ namespace grt {
 	}
 
 	void websocket_signaller_unsecure::send(std::string msg) {
-		session_->send_message(msg);
+		if(session_)
+			session_->send_message(msg);
 	}
 
 
