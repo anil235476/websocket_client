@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
 
-set(WEBRTC_INC "D:/webrtcBuild/Sept/webrtc_checkout/src")
-set(BOOST_LIB "D:/boost_1_69_0/boost_1_69_0")
-set(BORING_SSL_PATH ${WEBRTC_INC}/third_party/boringssl/src/include)
+#set(WEBRTC_INC "D:/webrtcBuild/Sept/webrtc_checkout/src")
+#set(BOOST_LIB "F:/project/boost_1_69_0/")
+set(BORING_SSL_PATH ${LIBWEBRTC_INCLUDE_PATH}/third_party/boringssl/src/include)
 
 if(SECURE_SIGNALING)
 add_definitions(-DSECURE_SIGNALING)
@@ -28,6 +28,7 @@ if(MSVC)
 endif()
 
 target_include_directories(signaller PUBLIC 
+	${BOOST_LIB}
 	$<BUILD_INTERFACE:${BOOST_LIB}>
 	$<BUILD_INTERFACE:${BORING_SSL_PATH}>
 	)
