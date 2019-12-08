@@ -391,13 +391,17 @@ namespace grt {
 	}
 
 	void websocket_signaller::disconnect() {
-		if(session_)
+		if (session_) {
 			session_->close();
+			t_.join();
+		}
+			
 	}
 
 	websocket_signaller::~websocket_signaller() {
 		std::cout << "\n~websocket_signaller() called\n";
-		t_.join();
+		if(t_.joinable())
+				t_.join();
 	}
 
 	void websocket_signaller::send(std::string msg) {
