@@ -27,7 +27,10 @@ if(MSVC)
 
 endif()
 
-target_include_directories(signaller PUBLIC 
+target_include_directories(signaller
+  PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    PRIVATE
 	${BOOST_LIB}
 	$<BUILD_INTERFACE:${BOOST_LIB}>
 	$<BUILD_INTERFACE:${BORING_SSL_PATH}>

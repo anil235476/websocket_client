@@ -409,7 +409,7 @@ namespace grt {
 			if(session_)
 				session_->send_message(msg);
 		}
-		catch (boost::exception const& ex) {
+		catch (boost::exception const& /*ex*/) {
 			//boost::error_info(ex);
 			//todo: handle this.
 		}
