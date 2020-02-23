@@ -31,13 +31,16 @@ target_include_directories(signaller
   PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     PRIVATE
-	${BOOST_LIB}
 	$<BUILD_INTERFACE:${BOOST_LIB}>
 	$<BUILD_INTERFACE:${BORING_SSL_PATH}>
 	)
 
-
 target_link_directories( signaller PUBLIC
-	#	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/openssl-1.1.0f-vs2017/lib64>
-	#$<BUILD_INTERFACE:${CMAKE_HOME_DIRECTORY}/webrtc_open_source/debug>
+
+	$<BUILD_INTERFACE:${BOOST_LIB}/stage/lib>
+
+	)
+target_link_libraries(signaller PUBLIC
+	${LIBWEBRTC_BINARY_PATH}/webrtc${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
+
