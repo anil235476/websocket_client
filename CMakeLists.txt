@@ -40,7 +40,7 @@ target_link_directories( signaller PUBLIC
 	$<BUILD_INTERFACE:${BOOST_LIB}/stage/lib>
 
 	)
-target_link_libraries(signaller PUBLIC
+target_link_libraries(signaller PRIVATE
 	${LIBWEBRTC_BINARY_PATH}/webrtc${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 
