@@ -23,7 +23,8 @@ namespace detail {
 	void
 		fail(boost::system::error_code ec, char const* what, std::shared_ptr<grt::signaller_callback> callbck)
 	{
-		std::cerr << what << ": " << ec.message() << "\n";
+		const auto m = ec.message();
+		std::cerr << what << ": " << m << "\n";
 		assert(callbck.get());
 		callbck->on_error(what);
 	}
@@ -165,7 +166,7 @@ namespace detail {
 			boost::ignore_unused(bytes_transferred);
 
 			if (ec) {
-				assert(false);
+				//assert(false);
 				return fail(ec, "read", callbck_);
 			}
 				
