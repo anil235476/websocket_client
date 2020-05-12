@@ -26,7 +26,8 @@ namespace detail {
 		const auto m = ec.message();
 		std::cerr << what << ": " << m << "\n";
 		assert(callbck.get());
-		callbck->on_error(what);
+		
+		callbck->on_error(m + what);
 	}
 
 	// Sends a WebSocket message and prints the response
