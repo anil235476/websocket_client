@@ -21,11 +21,11 @@ namespace detail {
 
 	// Report a failure
 	void
-		fail(boost::system::error_code ec, char const* what, std::shared_ptr<grt::signaller_callback> callbck)
+		fail(boost::system::error_code ec, char const* what, grt::signaller_callback* callbck)
 	{
 		const auto m = ec.message();
 		std::cerr << what << ": " << m << "\n";
-		assert(callbck.get());
+		assert(callbck);
 		
 		callbck->on_error(m + what);
 	}
@@ -37,11 +37,11 @@ namespace detail {
 	    boost::beast::multi_buffer buffer_;
 		std::string host_;
 		std::string text_{ "/" };
-		std::shared_ptr<grt::signaller_callback> callbck_{ nullptr };
+		grt::signaller_callback* callbck_{ nullptr };
 	public:
 		// Resolver and socket require an io_context
 		explicit
-			session(boost::asio::io_context& ioc, ssl::context& ctx, std::shared_ptr<grt::signaller_callback> callbk)
+			session(boost::asio::io_context& ioc, ssl::context& ctx,grt::signaller_callback* callbk)
 			: resolver_(ioc)
 			, ws_(ioc, ctx)
 			, callbck_{ callbk }
@@ -197,7 +197,7 @@ namespace detail {
 			// std::cout << boost::beast::buffers(buffer_.data()) << std::endl;
 		}
 
-		void set_callback(std::shared_ptr<grt::signaller_callback> callbk) {
+		void set_callback(grt::signaller_callback* callbk) {
 			assert(callbk);
 			callbck_ = callbk;
 		}
@@ -211,11 +211,11 @@ namespace detail {
 		boost::beast::multi_buffer buffer_;
 		std::string host_;
 		std::string text_{ "/" };
-		std::shared_ptr<grt::signaller_callback> callbck_{ nullptr };
+		grt::signaller_callback* callbck_{ nullptr };
 	public:
 		// Resolver and socket require an io_context
 		explicit
-			session_unsecure(boost::asio::io_context& ioc, ssl::context& ctx, std::shared_ptr<grt::signaller_callback> callbk)
+			session_unsecure(boost::asio::io_context& ioc, ssl::context& ctx, grt::signaller_callback* callbk)
 			: resolver_(ioc)
 			, ws_(ioc)
 			, callbck_{ callbk }
@@ -353,7 +353,7 @@ namespace detail {
 			// std::cout << boost::beast::buffers(buffer_.data()) << std::endl;
 		}
 
-		void set_callback(std::shared_ptr<grt::signaller_callback> callbk) {
+		void set_callback(grt::signaller_callback* callbk) {
 			assert(callbk);
 			callbck_ = callbk;
 		}
@@ -372,13 +372,14 @@ namespace grt {
 
 	void websocket_signaller::connect(std::string host, std::string port,
 		std::string text, std::shared_ptr<signaller_callback> clb) {
+		clb_ = clb;
 		t_ = std::thread{ [this, host, port, text, clb]() {
 			boost::asio::io_context ioc;
 			// The SSL context is required, and holds certificates
 			ssl::context ctx{ ssl::context::sslv23_client };
 
 			session_ = std::make_shared<session_imp>(
-				ioc, ctx, clb);
+				ioc, ctx, clb.get());
 			session_->run(host, port, text);
 			ioc.run();
 			std::cout << "\n coming out of session run \n";
@@ -387,7 +388,8 @@ namespace grt {
 		};
 	}
 
-	void websocket_signaller::set_callback(std::shared_ptr<signaller_callback> clb) {
+	void websocket_signaller::set_callback(signaller_callback* clb ) {
+		clb_.reset();
 		if(session_)
 			session_->set_callback(clb);
 	}
@@ -425,13 +427,14 @@ namespace grt {
 
 	void websocket_signaller_unsecure::connect(std::string host, std::string port,
 		std::string text, std::shared_ptr<signaller_callback> clb) {
+		clb_ = clb;
 		t_ = std::thread{ [this, host, port, text, clb]() {
 			boost::asio::io_context ioc;
 			// The SSL context is required, and holds certificates
 			ssl::context ctx{ ssl::context::sslv23_client };
 
 			session_ = std::make_shared<detail::session_unsecure>(
-				ioc, ctx, clb);
+				ioc, ctx, clb.get());
 			session_->run(host, port, text);
 			ioc.run();
 			std::cout << "\n coming out of session run websocket_signaller_unsecure \n";
@@ -440,7 +443,8 @@ namespace grt {
 		};
 	}
 
-	void websocket_signaller_unsecure::set_callback(std::shared_ptr<signaller_callback> clb) {
+	void websocket_signaller_unsecure::set_callback(signaller_callback* clb) {
+		clb_.reset();
 		if(session_)
 			session_->set_callback(clb);
 	}
