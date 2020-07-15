@@ -25,8 +25,8 @@ namespace detail {
 	{
 		const auto m = ec.message();
 		std::cerr << what << ": " << m << "\n";
-		assert(callbck);
-		
+		//assert(callbck);
+		if(callbck)
 		callbck->on_error(m + what);
 	}
 
@@ -170,7 +170,7 @@ namespace detail {
 				//assert(false);
 				return fail(ec, "read", callbck_);
 			}
-				
+			if(callbck_)
 			callbck_->on_message(boost::beast::buffers_to_string(buffer_.data()));
 			buffer_.consume(buffer_.size());
 			start_reading();
@@ -192,13 +192,14 @@ namespace detail {
 		{
 			if (ec)
 				return fail(ec, "close", callbck_);
-			callbck_->on_close();
+			if(callbck_)
+				callbck_->on_close();
 
 			// std::cout << boost::beast::buffers(buffer_.data()) << std::endl;
 		}
 
 		void set_callback(grt::signaller_callback* callbk) {
-			assert(callbk);
+			//assert(callbk);
 			callbck_ = callbk;
 		}
 	};
@@ -365,6 +366,28 @@ namespace grt {
 		const auto count = v.find('\n');
 		return v.substr(0, count);
 	}
+
+	void websocket_signaller::connect(std::string host, std::string port, signaller_callback* clb) {
+		connect(extract_charcter_from_end(host), extract_charcter_from_end(port), std::string{ "/" }, clb);
+	}
+
+	void websocket_signaller::connect(
+		std::string host, std::string port, std::string text, signaller_callback* callbck) {
+		t_ = std::thread{ [this, host, port, text, callbck]() {
+			boost::asio::io_context ioc;
+			// The SSL context is required, and holds certificates
+			ssl::context ctx{ ssl::context::sslv23_client };
+
+			session_ = std::make_shared<session_imp>(
+				ioc, ctx, callbck);
+			session_->run(host, port, text);
+			ioc.run();
+			std::cout << "\n coming out of session run \n";
+			session_.reset();
+			}
+		};
+	}
+
 	void websocket_signaller::connect(std::string host,
 		std::string port, std::shared_ptr<signaller_callback> clb) {
 		connect(extract_charcter_from_end(host), extract_charcter_from_end(port), std::string{"/"}, clb);
@@ -373,19 +396,7 @@ namespace grt {
 	void websocket_signaller::connect(std::string host, std::string port,
 		std::string text, std::shared_ptr<signaller_callback> clb) {
 		clb_ = clb;
-		t_ = std::thread{ [this, host, port, text, clb]() {
-			boost::asio::io_context ioc;
-			// The SSL context is required, and holds certificates
-			ssl::context ctx{ ssl::context::sslv23_client };
-
-			session_ = std::make_shared<session_imp>(
-				ioc, ctx, clb.get());
-			session_->run(host, port, text);
-			ioc.run();
-			std::cout << "\n coming out of session run \n";
-			session_.reset();
-			}
-		};
+		connect(host, port, text, clb.get());
 	}
 
 	void websocket_signaller::set_callback(signaller_callback* clb ) {
@@ -397,6 +408,7 @@ namespace grt {
 	void websocket_signaller::disconnect() {
 		if (session_) {
 			session_->close();
+			if(t_.joinable())
 			t_.join();
 		}
 			
@@ -419,6 +431,28 @@ namespace grt {
 		}
 	}
 
+	void websocket_signaller_unsecure::connect(
+		std::string host, std::string port, signaller_callback* clb) {
+		connect(extract_charcter_from_end(host), extract_charcter_from_end(port), std::string{ "/" }, clb);
+	}
+
+	void  websocket_signaller_unsecure::connect(
+		std::string host, std::string port, std::string text, signaller_callback* callbck) {
+		t_ = std::thread{ [this, host, port, text, callbck]() {
+			boost::asio::io_context ioc;
+			// The SSL context is required, and holds certificates
+			ssl::context ctx{ ssl::context::sslv23_client };
+
+			session_ = std::make_shared<detail::session_unsecure>(
+				ioc, ctx, callbck);
+			session_->run(host, port, text);
+			ioc.run();
+			std::cout << "\n coming out of session run websocket_signaller_unsecure \n";
+			session_.reset();
+			}
+		};
+	}
+
 
 	void websocket_signaller_unsecure::connect(std::string host,
 		std::string port, std::shared_ptr<signaller_callback> clb) {
@@ -428,19 +462,7 @@ namespace grt {
 	void websocket_signaller_unsecure::connect(std::string host, std::string port,
 		std::string text, std::shared_ptr<signaller_callback> clb) {
 		clb_ = clb;
-		t_ = std::thread{ [this, host, port, text, clb]() {
-			boost::asio::io_context ioc;
-			// The SSL context is required, and holds certificates
-			ssl::context ctx{ ssl::context::sslv23_client };
-
-			session_ = std::make_shared<detail::session_unsecure>(
-				ioc, ctx, clb.get());
-			session_->run(host, port, text);
-			ioc.run();
-			std::cout << "\n coming out of session run websocket_signaller_unsecure \n";
-			session_.reset();
-			}
-		};
+		connect(host, port, text, clb.get());
 	}
 
 	void websocket_signaller_unsecure::set_callback(signaller_callback* clb) {
