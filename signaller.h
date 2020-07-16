@@ -16,10 +16,17 @@ namespace grt {
 
 	class signaller {
 	public:
-		virtual ~signaller(){}
+		virtual ~signaller() {}
+
+		virtual void connect(std::string host, std::string port, signaller_callback* callbck) = 0;
+		virtual void connect(std::string host, std::string port, std::string text, signaller_callback* callbck) = 0;
+		//TODO:bellow two interface should be removed in future and interface which does not take s
+		//shared callback should be used.
+		[[deprecated]] 
 		virtual void connect(std::string host, std::string port, std::shared_ptr<signaller_callback> clb) = 0;
+		[[deprecated]]
 		virtual void connect(std::string host, std::string port, std::string text, std::shared_ptr<signaller_callback> clb);
-		virtual void set_callback(std::shared_ptr<signaller_callback> clb){}
+		virtual void set_callback(signaller_callback* clb) {}
 		virtual void disconnect(){}
 		virtual void send(std::string msg) = 0;
 	};
